@@ -9,25 +9,41 @@
 ; Fuzzy match rom filenames to artwork from RF Generation
 
 Local $app_name = "RetroPie Box Art Scraper"
+;Local $emulator_folder_name = "snes"
+;Local $download_path = "D:\dwn\Nintendo_SNES"
+;Local $emulator_folder_name = "wonderswan"
+;Local $download_path = "D:\dwn\Bandai_WonderSwan"
+;Local $emulator_folder_name = "wonderswancolor"
+;Local $download_path = "D:\dwn\Bandai_WonderSwan_Color_SwanCrystal"
+;Local $emulator_folder_name = "ngpc"
+;Local $download_path = "D:\dwn\SNK_Neo_Geo_Pocket_Color"
+;Local $emulator_folder_name = "ngp"
+;Local $download_path = "D:\dwn\SNK_Neo_Geo_Pocket"
+Local $emulator_folder_name = "gbc"
+Local $download_path = "D:\dwn\Nintendo_Game_Boy_Color"
+
+
 Local $ImageMagick_path = "C:\Program Files\ImageMagick-7.0.11-Q16-HDRI"
 Local $sDrive = "", $sDir = "", $sFileName = "", $sExtension = ""
 Local $sDrive1 = "", $sDir1 = "", $sFileName1 = "", $sExtension1 = ""
 Local $sDrive2 = "", $sDir2 = "", $sFileName2 = "", $sExtension2 = ""
-Local $alphanumeric_arr[36] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-;Local $alphanumeric_arr[11] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A"]
+;Local $alphanumeric_arr[36] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+Local $alphanumeric_arr[13] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C"]
 Local $iStyle = BitOR($TVS_EDITLABELS, $TVS_HASBUTTONS, $TVS_HASLINES, $TVS_LINESATROOT, $TVS_DISABLEDRAGDROP, $TVS_SHOWSELALWAYS, $TVS_CHECKBOXES)
-
-Local $emulator_folder_name = "snes"
-Local $download_path = "D:\dwn\Nintendo_SNES"
-
 Local $downloaded_images_path = "~/.emulationstation/downloaded_images/" & $emulator_folder_name
 Local $roms_folder = "F:\RetroPie\home\pi\RetroPie\roms\" & $emulator_folder_name
 
-
 Local $main_gui = GUICreate("RetroPie Box Art Scraper", 400, 600)
 $idTreeView = GUICtrlCreateTreeView(2, 2, 396, 560, $iStyle, $WS_EX_CLIENTEDGE)
-Local $merge_button = GUICtrlCreateButton("Merge", 2, 570, 80, 20)
+Local $scrape_button = GUICtrlCreateButton("Scrape", 2, 570, 80, 20)
+Local $merge_button = GUICtrlCreateButton("Merge", 90, 570, 80, 20)
 GUISetState(@SW_SHOW)
+
+
+if FileExists($download_path & "\Box_Full") = False Then
+
+	DirCreate($download_path & "\Box_Full")
+EndIf
 
 
 if FileExists(@ScriptDir & "\" & $app_name & ".txt") = True Then
@@ -66,85 +82,6 @@ if FileExists(@ScriptDir & "\" & $app_name & ".txt") = True Then
 
 	_GUICtrlTreeView_Expand($idTreeView)
 	_GUICtrlTreeView_EndUpdate($idTreeView)
-Else
-
-	; scrape the tree
-
-	for $k = 0 to (UBound($alphanumeric_arr) - 1)
-
-		Local $roms_arr = _FileListToArrayRec($roms_folder, $alphanumeric_arr[$k] & "*.sfc", 1, 0, 1)
-		_ArrayDelete($roms_arr, 0)
-		Local $art_arr = _FileListToArrayRec("D:\dwn\Nintendo_SNES\Box", $alphanumeric_arr[$k] & "*", 1, 0, 1)
-		_ArrayDelete($art_arr, 0)
-
-		Local $tree_first_item = Null
-
-		for $i = 0 to (UBound($roms_arr) - 1)
-
-			_PathSplit($roms_arr[$i], $sDrive1, $sDir1, $sFileName1, $sExtension1)
-			Local $sFileName1_cleaned = $sFileName1
-			$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(USA)", "")
-			$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(Europe)", "")
-			$sFileName1_cleaned = StringStripWS($sFileName1_cleaned, 3)
-
-			ConsoleWrite("rom " & $sFileName1 & @CRLF)
-			Local $tree_parent_item = _GUICtrlTreeView_Add($idTreeView, 0, $sFileName1)
-	;		$tree_file_str = $tree_file_str & $sFileName1 & @CRLF
-
-			if $tree_first_item = Null Then
-
-				$tree_first_item = $tree_parent_item
-			EndIf
-
-			Local $similarity_arr[0]
-
-			for $j = 0 to (UBound($art_arr) - 1)
-
-				_PathSplit($art_arr[$j], $sDrive2, $sDir2, $sFileName2, $sExtension2)
-
-				Local $similarity = _Typos($sFileName1_cleaned, $sFileName2)
-
-				if $similarity <= 0 Then
-
-					ReDim $similarity_arr[0]
-					_ArrayAdd($similarity_arr, StringFormat("%.2d", $similarity) & "|" & $sFileName2, 0, "~")
-					ExitLoop
-				EndIf
-
-				if $similarity <= 10 Then
-
-					_ArrayAdd($similarity_arr, StringFormat ( "%.2d" , $similarity ) & "|" & $sFileName2, 0, "~")
-					;_ArrayDisplay($similarity_arr)
-
-					;ConsoleWrite("   " & $similarity & "|" & $sFileName2 & @CRLF)
-				EndIf
-
-			Next
-
-			_ArraySort($similarity_arr)
-
-			for $j = 0 to (UBound($similarity_arr) - 1)
-
-				Local $similarity_part = StringSplit($similarity_arr[$j], "|", 2)
-				Local $treeview_child_item = _GUICtrlTreeView_AddChild($idTreeView, $tree_parent_item, $similarity_part[1])
-	;			$tree_file_str = $tree_file_str & "	" & $similarity_part[1]
-
-				if Number($similarity_part[0]) = 0 Then
-
-					_GUICtrlTreeView_SetChecked($idTreeView, $treeview_child_item)
-	;				$tree_file_str = $tree_file_str & "	GUI_CHECKED"
-	;			Else
-
-	;				$tree_file_str = $tree_file_str & "	GUI_UNCHECKED"
-				EndIf
-
-	;			$tree_file_str = $tree_file_str & @CRLF
-
-			Next
-
-			_GUICtrlTreeView_Expand($idTreeView, $tree_parent_item)
-		Next
-	Next
 EndIf
 
 _GUICtrlTreeView_SelectItem($idTreeView, _GUICtrlTreeView_GetFirstItem($idTreeView))
@@ -160,12 +97,168 @@ While True
 
 		Case $GUI_EVENT_CLOSE
 
+			; save the tree
+
+			Local $tree_file_str = ""
+			Local $tree_item = _GUICtrlTreeView_GetFirstItem($idTreeView)
+
+			while $tree_item <> 0
+
+				local $text = _GUICtrlTreeView_GetText($idTreeView, $tree_item)
+				$tree_file_str = $tree_file_str & $text & @CRLF
+				Local $tree_item_child = _GUICtrlTreeView_GetFirstChild($idTreeView, $tree_item)
+				Local $tree_item_last_child = _GUICtrlTreeView_GetLastChild($idTreeView, $tree_item)
+
+				while $tree_item_child <> 0
+
+					Local $text = _GUICtrlTreeView_GetText($idTreeView, $tree_item_child)
+					$tree_file_str = $tree_file_str & "	" & $text
+					Local $checked = _GUICtrlTreeView_GetChecked($idTreeView, $tree_item_child)
+					$tree_file_str = $tree_file_str & "	" & $checked & @CRLF
+
+					if $tree_item_child = $tree_item_last_child Then
+
+						ExitLoop
+					EndIf
+
+					$tree_item_child = _GUICtrlTreeView_GetNextSibling($idTreeView, $tree_item_child)
+				wend
+
+				$tree_item = _GUICtrlTreeView_GetNextSibling($idTreeView, $tree_item)
+			wend
+
+			FileDelete(@ScriptDir & "\" & $app_name & ".txt")
+			FileWrite(@ScriptDir & "\" & $app_name & ".txt", $tree_file_str)
+
 			GUIDelete($main_gui)
 			ExitLoop
 
+		Case $scrape_button
+
+			; scrape the tree
+
+			_GUICtrlTreeView_DeleteAll($idTreeView)
+
+			for $k = 0 to (UBound($alphanumeric_arr) - 1)
+
+				Local $roms_arr = _FileListToArrayRec($roms_folder, $alphanumeric_arr[$k] & "*.*", 1, 0, 1)
+				_ArrayDelete($roms_arr, 0)
+				Local $art_arr = _FileListToArrayRec($download_path & "\Box", $alphanumeric_arr[$k] & "*", 1, 0, 1)
+				_ArrayDelete($art_arr, 0)
+
+				Local $tree_first_item = Null
+
+				for $i = 0 to (UBound($roms_arr) - 1)
+
+					_PathSplit($roms_arr[$i], $sDrive1, $sDir1, $sFileName1, $sExtension1)
+
+					if StringCompare($sExtension1, ".state") <> 0 Then
+
+						Local $sFileName1_cleaned = $sFileName1
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(World)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(USA)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(USA, Australia)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(USA, Europe)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(Europe)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(Japan)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(Germany)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(Spain)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(Japan, Europe)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(Demo)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(Proto)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(En,De)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(En,Es,It)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(En,Ja)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(En,Fr,De)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(En,Fr,It)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(En,Fr,De,Es,It,Nl)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(En,Fr,De,Es,Nl)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(En,Sv,No,Da,Fi)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, "(Fr,De,Nl)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " (J)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " [M][!]", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " [M][f1]", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " [M][o1]", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " [M][o1][f1]", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " [M]", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " (PD)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " (Rev A)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " (Rev B)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " (SGB Enhanced)", "")
+						$sFileName1_cleaned = StringReplace($sFileName1_cleaned, " (Rumble Version)", "")
+						$sFileName1_cleaned = StringStripWS($sFileName1_cleaned, 3)
+
+						ConsoleWrite("rom " & $sFileName1_cleaned & @CRLF)
+						Local $tree_parent_item = _GUICtrlTreeView_Add($idTreeView, 0, $sFileName1)
+				;		$tree_file_str = $tree_file_str & $sFileName1 & @CRLF
+
+						if $tree_first_item = Null Then
+
+							$tree_first_item = $tree_parent_item
+						EndIf
+
+						Local $similarity_arr[0]
+
+						for $j = 0 to (UBound($art_arr) - 1)
+
+							_PathSplit($art_arr[$j], $sDrive2, $sDir2, $sFileName2, $sExtension2)
+
+							Local $similarity = _Typos($sFileName1_cleaned, $sFileName2)
+							;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $sFileName1_cleaned = ' & $sFileName1_cleaned & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+							;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $sFileName2 = ' & $sFileName2 & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+							;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $similarity = ' & $similarity & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+
+							if $similarity <= 0 Then
+
+								ReDim $similarity_arr[0]
+								_ArrayAdd($similarity_arr, StringFormat("%.2d", $similarity) & "|" & $sFileName2, 0, chr(28))
+								ExitLoop
+							EndIf
+
+							if $similarity <= 10 Then
+
+								_ArrayAdd($similarity_arr, StringFormat ( "%.2d" , $similarity ) & "|" & $sFileName2, 0, chr(28))
+								;_ArrayDisplay($similarity_arr)
+
+								;ConsoleWrite("   " & $similarity & "|" & $sFileName2 & @CRLF)
+							EndIf
+
+						Next
+
+						_ArraySort($similarity_arr)
+						;_ArrayDisplay($similarity_arr)
+
+						for $j = 0 to (UBound($similarity_arr) - 1)
+
+							Local $similarity_part = StringSplit($similarity_arr[$j], "|", 2)
+							;ConsoleWrite('@@ Debug(' & @ScriptLineNumber & ') : $similarity_arr[$j] = ' & $similarity_arr[$j] & @CRLF & '>Error code: ' & @error & @CRLF) ;### Debug Console
+							Local $treeview_child_item = _GUICtrlTreeView_AddChild($idTreeView, $tree_parent_item, $similarity_part[1])
+				;			$tree_file_str = $tree_file_str & "	" & $similarity_part[1]
+
+							if Number($similarity_part[0]) = 0 Then
+
+								_GUICtrlTreeView_SetChecked($idTreeView, $treeview_child_item)
+				;				$tree_file_str = $tree_file_str & "	GUI_CHECKED"
+				;			Else
+
+				;				$tree_file_str = $tree_file_str & "	GUI_UNCHECKED"
+							EndIf
+
+				;			$tree_file_str = $tree_file_str & @CRLF
+
+						Next
+
+						_GUICtrlTreeView_Expand($idTreeView, $tree_parent_item)
+					EndIf
+				Next
+			Next
+
+
+
+
 		Case $merge_button
 
-#cs
+
 			Local $tree_item = _GUICtrlTreeView_GetFirstItem($idTreeView)
 
 			While $tree_item <> 0
@@ -184,7 +277,7 @@ While True
 				$tree_item = _GUICtrlTreeView_GetNext($idTreeView, $tree_item)
 
 			WEnd
-			#ce
+
 
 			; Create gamelist.xml
 
@@ -233,43 +326,6 @@ While True
 WEnd
 
 
-
-; save the tree
-
-Local $tree_file_str = ""
-Local $tree_item = _GUICtrlTreeView_GetFirstItem($idTreeView)
-
-while $tree_item <> 0
-
-	local $text = _GUICtrlTreeView_GetText($idTreeView, $tree_item)
-	$tree_file_str = $tree_file_str & $text & @CRLF
-	Local $tree_item_child = _GUICtrlTreeView_GetFirstChild($idTreeView, $tree_item)
-	Local $tree_item_last_child = _GUICtrlTreeView_GetLastChild($idTreeView, $tree_item)
-
-	while $tree_item_child <> 0
-
-		Local $text = _GUICtrlTreeView_GetText($idTreeView, $tree_item_child)
-		$tree_file_str = $tree_file_str & "	" & $text
-		Local $checked = _GUICtrlTreeView_GetChecked($idTreeView, $tree_item_child)
-		$tree_file_str = $tree_file_str & "	" & $checked & @CRLF
-
-		if $tree_item_child = $tree_item_last_child Then
-
-			ExitLoop
-		EndIf
-
-		$tree_item_child = _GUICtrlTreeView_GetNextSibling($idTreeView, $tree_item_child)
-	wend
-
-	$tree_item = _GUICtrlTreeView_GetNextSibling($idTreeView, $tree_item)
-wend
-
-FileDelete(@ScriptDir & "\" & $app_name & ".txt")
-FileWrite(@ScriptDir & "\" & $app_name & ".txt", $tree_file_str)
-
-
-
-GUIDelete()
 
 
 
